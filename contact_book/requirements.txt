@@ -1,0 +1,4 @@
+# requirements.txt
+
+# This project has no external dependencies.
+# Requires Python 3.x

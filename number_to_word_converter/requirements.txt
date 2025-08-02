@@ -1,0 +1,5 @@
+# requirements.txt
+
+# No external dependencies needed
+
+# This project requires Python 3.7 or newer

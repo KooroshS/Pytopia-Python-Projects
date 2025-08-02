@@ -110,7 +110,4 @@ if __name__ == "__main__":
       break
 
     else:
-      fprint("Invalid choice. Please try again.")
-
-from google.colab import drive
-drive.mount('/content/drive')
+      print("Invalid choice. Please try again.")
