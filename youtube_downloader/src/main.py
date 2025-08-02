@@ -1,1 +1,129 @@
-{"nbformat":4,"nbformat_minor":0,"metadata":{"colab":{"provenance":[],"authorship_tag":"ABX9TyO2qygC+EHpZI/eIRxigYi4"},"kernelspec":{"name":"python3","display_name":"Python 3"},"language_info":{"name":"python"}},"cells":[{"cell_type":"code","execution_count":null,"metadata":{"colab":{"base_uri":"https://localhost:8080/"},"id":"YxPO9Z-8b0r1","executionInfo":{"status":"ok","timestamp":1753627538855,"user_tz":-210,"elapsed":2216,"user":{"displayName":"Koorosh Sharafi","userId":"06269985509730362663"}},"outputId":"84f35a00-c753-487a-c0e0-eb60b4145640"},"outputs":[{"output_type":"stream","name":"stdout","text":["Requested quality '720p' not available. Downloading highest resolution instead.\n"]},{"output_type":"stream","name":"stderr","text":["Bonnie Tyler - Holding Out For A Hero (Lyrics): 100%|██████████| 14.0M/14.0M [00:01<00:00, 10.2MB/s]"]},{"output_type":"stream","name":"stdout","text":["\n","Downloaded 'Bonnie Tyler - Holding Out For A Hero (Lyrics)' successfully to /content/Bonnie Tyler - Holding Out For A Hero (Lyrics).mp4\n","Download complete!\n"]},{"output_type":"stream","name":"stderr","text":["\n"]}],"source":["import argparse\n","from pathlib import Path\n","\n","from pytubefix import YouTube\n","from pytubefix.exceptions import VideoUnavailable\n","from tqdm import tqdm\n","\n","\n","class YouTubeDownloader:\n","  \"\"\"A class to download YouTube videos with a progress bar.\"\"\"\n","\n","  def __init__(self, url, output_path=None, quality=None):\n","    \"\"\"\n","    Initializes the YouTubeDownloader with the given URL, output path, and quality.\n","\n","    Args:\n","      url: The URL of the YouTube video.\n","      output_path: The directory to save the downloaded video. Defaults to the current working directory.\n","      quality: The desired video quality (e.g., 'highest', 'lowest', '720p'). Defaults to 'highest'.\n","    \"\"\"\n","    if output_path is None:\n","      # Set output_path to the current working directory if not provided\n","      self.output_path = Path.cwd()\n","    else:\n","      # Ensure output_path is a Path object\n","      self.output_path = Path(output_path)\n","\n","    self.url = url\n","    self.quality = quality\n","    # Initialize YouTube object with progress and complete callbacks\n","    self.yt = YouTube(\n","        self.url,\n","        on_progress_callback=self.progress_function,\n","        on_complete_callback=self.complete_function\n","    )\n","    self.pbar = None\n","\n","  def download(self):\n","    \"\"\"\n","    Downloads the YouTube video based on the initialized parameters.\n","    \"\"\"\n","    try:\n","      # Check if the video is available\n","      self.yt.check_availability()\n","    except VideoUnavailable:\n","      print(f\"Video '{self.url}' is unavailable.\")\n","      return\n","\n","    stream = None\n","    # Select the appropriate stream based on the requested quality\n","    if self.quality == \"highest\":\n","      stream = self.yt.streams.filter(progressive=True,\n","                                      file_extension=\"mp4\"\n","                                      ).get_highest_resolution()\n","    elif self.quality == \"lowest\":\n","      stream = self.yt.streams.filter(progressive=True,\n","                                      file_extension=\"mp4\"\n","                                      ).get_lowest_resolution()\n","    else:\n","      # Attempt to find a stream with the requested resolution\n","      stream = self.yt.streams.filter(\n","          progressive=True,\n","          file_extension='mp4',\n","          res=self.quality\n","      ).first()\n","\n","      # If no stream found for the requested quality, fallback to highest resolution\n","      if stream is None:\n","        print(f\"Requested quality '{self.quality}' not available. Downloading highest resolution instead.\")\n","        stream = self.yt.streams.filter(progressive=True,\n","                                        file_extension=\"mp4\"\n","                                        ).get_highest_resolution()\n","\n","    # Initialize tqdm progress bar if a stream was found\n","    if stream:\n","      self.pbar = tqdm(\n","          total=stream.filesize,\n","          unit=\"B\",\n","          unit_scale=True,\n","          desc=self.yt.title,\n","      )\n","      # Download the selected stream\n","      stream.download(output_path=self.output_path)\n","    else:\n","        print(\"Could not find a suitable stream to download.\")\n","\n","\n","  def progress_function(self, stream, chunk, bytes_remaining):\n","    \"\"\"\n","    Callback function to update the progress bar during download.\n","\n","    Args:\n","      stream: The stream being downloaded.\n","      chunk: The downloaded chunk of data.\n","      bytes_remaining: The number of bytes remaining to download.\n","    \"\"\"\n","    current = stream.filesize - bytes_remaining\n","    # Update the progress bar with the difference between current progress and previous progress\n","    self.pbar.update(current - self.pbar.n)\n","\n","\n","  def complete_function(self, stream, file_path):\n","    \"\"\"\n","    Callback function to close the progress bar and print a success message after download.\n","\n","    Args:\n","      stream: The stream that was downloaded.\n","      file_path: The path where the video was saved.\n","    \"\"\"\n","    # Close the progress bar\n","    self.pbar.close()\n","    print(f\"\\nDownloaded '{self.yt.title}' successfully to {file_path}\")\n","\n","\n","if __name__ == \"__main__\":\n","  # Set up argument parser for command-line usage\n","  parser = argparse.ArgumentParser(description=\"YouTube Downloader\")\n","\n","  # Add arguments\n","  parser.add_argument(\"url\", help=\"YouTube video URL\")\n","  parser.add_argument(\"-q\", \"--quality\", help=\"Video Quality\", default=\"highest\")\n","  parser.add_argument(\"-o\", \"--output_path\", help=\"Output directory\", default=None)\n","\n","  # Parse command-line arguments\n","  args = parser.parse_args()\n","\n","  # Create a YouTubeDownloader instance and start the download\n","  downloader = YouTubeDownloader(args.url, args.output_path, args.quality)\n","  downloader.download()"]},{"cell_type":"code","metadata":{"colab":{"base_uri":"https://localhost:8080/"},"id":"f4dc872b","executionInfo":{"status":"ok","timestamp":1753615948863,"user_tz":-210,"elapsed":1860,"user":{"displayName":"Koorosh Sharafi","userId":"06269985509730362663"}},"outputId":"ef7fa525-42bf-48f6-acab-67df1b07c2f7"},"source":["YouTubeDownloader(\"https://youtu.be/Hq5mVt-iozQ?si=IjOZg5AwGQ2QqhUj\").download()"],"execution_count":null,"outputs":[{"output_type":"stream","name":"stderr","text":["Bonnie Tyler - Holding Out For A Hero (Lyrics): 100%|██████████| 14.0M/14.0M [00:01<00:00, 12.1MB/s]"]},{"output_type":"stream","name":"stdout","text":["\n","Downloaded 'Bonnie Tyler - Holding Out For A Hero (Lyrics)' successfully to /content/Bonnie Tyler - Holding Out For A Hero (Lyrics).mp4\n","Download complete!\n"]},{"output_type":"stream","name":"stderr","text":["\n"]}]},{"cell_type":"code","source":["%pip install pytubefix"],"metadata":{"colab":{"base_uri":"https://localhost:8080/"},"id":"d7gxABYGCjAO","executionInfo":{"status":"ok","timestamp":1753627534015,"user_tz":-210,"elapsed":8384,"user":{"displayName":"Koorosh Sharafi","userId":"06269985509730362663"}},"outputId":"63e83ea3-7bb6-4513-9e73-420fe1c0d880"},"execution_count":null,"outputs":[{"output_type":"stream","name":"stdout","text":["Collecting pytubefix\n","  Downloading pytubefix-9.4.1-py3-none-any.whl.metadata (5.4 kB)\n","Requirement already satisfied: aiohttp>=3.12.13 in /usr/local/lib/python3.11/dist-packages (from pytubefix) (3.12.14)\n","Requirement already satisfied: aiohappyeyeballs>=2.5.0 in /usr/local/lib/python3.11/dist-packages (from aiohttp>=3.12.13->pytubefix) (2.6.1)\n","Requirement already satisfied: aiosignal>=1.4.0 in /usr/local/lib/python3.11/dist-packages (from aiohttp>=3.12.13->pytubefix) (1.4.0)\n","Requirement already satisfied: attrs>=17.3.0 in /usr/local/lib/python3.11/dist-packages (from aiohttp>=3.12.13->pytubefix) (25.3.0)\n","Requirement already satisfied: frozenlist>=1.1.1 in /usr/local/lib/python3.11/dist-packages (from aiohttp>=3.12.13->pytubefix) (1.7.0)\n","Requirement already satisfied: multidict<7.0,>=4.5 in /usr/local/lib/python3.11/dist-packages (from aiohttp>=3.12.13->pytubefix) (6.6.3)\n","Requirement already satisfied: propcache>=0.2.0 in /usr/local/lib/python3.11/dist-packages (from aiohttp>=3.12.13->pytubefix) (0.3.2)\n","Requirement already satisfied: yarl<2.0,>=1.17.0 in /usr/local/lib/python3.11/dist-packages (from aiohttp>=3.12.13->pytubefix) (1.20.1)\n","Requirement already satisfied: typing-extensions>=4.2 in /usr/local/lib/python3.11/dist-packages (from aiosignal>=1.4.0->aiohttp>=3.12.13->pytubefix) (4.14.1)\n","Requirement already satisfied: idna>=2.0 in /usr/local/lib/python3.11/dist-packages (from yarl<2.0,>=1.17.0->aiohttp>=3.12.13->pytubefix) (3.10)\n","Downloading pytubefix-9.4.1-py3-none-any.whl (768 kB)\n","\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m768.6/768.6 kB\u001b[0m \u001b[31m9.4 MB/s\u001b[0m eta \u001b[36m0:00:00\u001b[0m\n","\u001b[?25hInstalling collected packages: pytubefix\n","Successfully installed pytubefix-9.4.1\n"]}]}]}
+import argparse
+from pathlib import Path
+
+from pytubefix import YouTube
+from pytubefix.exceptions import VideoUnavailable
+from tqdm import tqdm
+
+
+class YouTubeDownloader:
+  """A class to download YouTube videos with a progress bar."""
+
+  def __init__(self, url, output_path=None, quality=None):
+    """
+    Initializes the YouTubeDownloader with the given URL, output path, and quality.
+
+    Args:
+      url: The URL of the YouTube video.
+      output_path: The directory to save the downloaded video. Defaults to the current working directory.
+      quality: The desired video quality (e.g., 'highest', 'lowest', '720p'). Defaults to 'highest'.
+    """
+    if output_path is None:
+      # Set output_path to the current working directory if not provided
+      self.output_path = Path.cwd()
+    else:
+      # Ensure output_path is a Path object
+      self.output_path = Path(output_path)
+
+    self.url = url
+    self.quality = quality
+    # Initialize YouTube object with progress and complete callbacks
+    self.yt = YouTube(
+        self.url,
+        on_progress_callback=self.progress_function,
+        on_complete_callback=self.complete_function
+    )
+    self.pbar = None
+
+  def download(self):
+    """
+    Downloads the YouTube video based on the initialized parameters.
+    """
+    try:
+      # Check if the video is available
+      self.yt.check_availability()
+    except VideoUnavailable:
+      print(f"Video '{self.url}' is unavailable.")
+      return
+
+    stream = None
+    # Select the appropriate stream based on the requested quality
+    if self.quality == "highest":
+      stream = self.yt.streams.filter(progressive=True,
+                                      file_extension="mp4"
+                                      ).get_highest_resolution()
+    elif self.quality == "lowest":
+      stream = self.yt.streams.filter(progressive=True,
+                                      file_extension="mp4"
+                                      ).get_lowest_resolution()
+    else:
+      # Attempt to find a stream with the requested resolution
+      stream = self.yt.streams.filter(
+          progressive=True,
+          file_extension='mp4',
+          res=self.quality
+      ).first()
+
+      # If no stream found for the requested quality, fallback to highest resolution
+      if stream is None:
+        print(f"Requested quality '{self.quality}' not available. Downloading highest resolution instead.")
+        stream = self.yt.streams.filter(progressive=True,
+                                        file_extension="mp4"
+                                        ).get_highest_resolution()
+
+    # Initialize tqdm progress bar if a stream was found
+    if stream:
+      self.pbar = tqdm(
+          total=stream.filesize,
+          unit="B",
+          unit_scale=True,
+          desc=self.yt.title,
+      )
+      # Download the selected stream
+      stream.download(output_path=self.output_path)
+    else:
+        print("Could not find a suitable stream to download.")
+
+
+  def progress_function(self, stream, chunk, bytes_remaining):
+    """
+    Callback function to update the progress bar during download.
+
+    Args:
+      stream: The stream being downloaded.
+      chunk: The downloaded chunk of data.
+      bytes_remaining: The number of bytes remaining to download.
+    """
+    current = stream.filesize - bytes_remaining
+    # Update the progress bar with the difference between current progress and previous progress
+    self.pbar.update(current - self.pbar.n)
+
+
+  def complete_function(self, stream, file_path):
+    """
+    Callback function to close the progress bar and print a success message after download.
+
+    Args:
+      stream: The stream that was downloaded.
+      file_path: The path where the video was saved.
+    """
+    # Close the progress bar
+    self.pbar.close()
+    print(f"\nDownloaded '{self.yt.title}' successfully to {file_path}")
+
+
+if __name__ == "__main__":
+  # Set up argument parser for command-line usage
+  parser = argparse.ArgumentParser(description="YouTube Downloader")
+
+  # Add arguments
+  parser.add_argument("url", help="YouTube video URL")
+  parser.add_argument("-q", "--quality", help="Video Quality", default="highest")
+  parser.add_argument("-o", "--output_path", help="Output directory", default=None)
+
+  # Parse command-line arguments
+  args = parser.parse_args()
+
+  # Create a YouTubeDownloader instance and start the download
+  downloader = YouTubeDownloader(args.url, args.output_path, args.quality)
+  downloader.download()
