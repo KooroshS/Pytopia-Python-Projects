@@ -1,0 +1,4 @@
+# No external libraries required
+# Standard library modules: smtplib, email, os
+# Optionally specify Python version
+python>=3.8
